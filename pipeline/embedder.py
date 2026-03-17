@@ -23,6 +23,21 @@ def _batched(items: list, size: int) -> Generator[list, None, None]:
         yield items[i : i + size]
 
 
+# Max characters to embed — text-embedding-3-large limit is 8192 tokens.
+# Roughly 4 chars/token; 7500 tokens * 4 = 30000 chars (safe ceiling).
+MAX_EMBED_CHARS = 30_000
+
+
+def _truncate_for_embedding(text: str) -> str:
+    """Truncate text to fit within the embedding model's token limit."""
+    if len(text) <= MAX_EMBED_CHARS:
+        return text
+    # Truncate at a word boundary
+    truncated = text[:MAX_EMBED_CHARS]
+    last_space = truncated.rfind(" ")
+    return truncated[:last_space] if last_space > 0 else truncated
+
+
 @retry(
     stop=stop_after_attempt(5),
     wait=wait_exponential(multiplier=1, min=2, max=30),
@@ -51,7 +66,7 @@ def embed_chunks(chunks: list[Chunk]) -> list[list[float]]:
         List of 3072-dim embedding vectors, aligned with input chunks.
     """
     client = OpenAI(api_key=settings.openai_api_key)
-    texts = [c.text for c in chunks]
+    texts = [_truncate_for_embedding(c.text) for c in chunks]
     all_vectors: list[list[float]] = []
 
     for batch_num, batch in enumerate(_batched(texts, BATCH_SIZE)):

@@ -45,30 +45,22 @@ def orchestrator_node(state: AgentState) -> dict:
     """
     query = state["user_query"]
     user_profile = state.get("user_profile", {})
-    trace = list(state.get("agent_trace", []))
 
     system_prompt = ORCHESTRATOR_SYSTEM + _build_few_shot_text() + _personalize_context(user_profile)
-
-    user_message = f"Route this query: {query}"
 
     response = client.messages.create(
         model=settings.claude_model,
         max_tokens=512,
         system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
+        messages=[{"role": "user", "content": f"Route this query: {query}"}],
     )
 
     raw_text = response.content[0].text.strip()
 
-    # Extract JSON from response (may be wrapped in code block)
     json_match = re.search(r"\{.*\}", raw_text, re.DOTALL)
-    if json_match:
-        routing = json.loads(json_match.group())
-    else:
-        # Fallback: try to parse entire response
-        routing = json.loads(raw_text)
+    routing = json.loads(json_match.group()) if json_match else json.loads(raw_text)
 
-    trace.append({
+    trace_entry = {
         "node": "orchestrator",
         "query": query,
         "company_filter": routing.get("company_filter"),
@@ -76,21 +68,20 @@ def orchestrator_node(state: AgentState) -> dict:
         "selected_agents": routing.get("selected_agents", []),
         "routing_explanation": routing.get("routing_explanation", ""),
         "is_valid_query": routing.get("is_valid_query", True),
-    })
+    }
 
-    # If query is invalid, set final response to rejection message
     if not routing.get("is_valid_query", True):
         return {
             "selected_agents": [],
             "company_filter": None,
             "filing_type_filter": None,
             "final_response": routing.get("rejection_reason", "I can only answer questions about Mag7 SEC filings."),
-            "agent_trace": trace,
+            "agent_trace": [trace_entry],
         }
 
     return {
         "selected_agents": routing.get("selected_agents", ["finance"]),
         "company_filter": routing.get("company_filter"),
         "filing_type_filter": routing.get("filing_type_filter"),
-        "agent_trace": trace,
+        "agent_trace": [trace_entry],
     }

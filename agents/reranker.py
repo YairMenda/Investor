@@ -60,7 +60,6 @@ def reranker_node(state: AgentState) -> dict:
     company_filter = state.get("company_filter")
     filing_type_filter = state.get("filing_type_filter")
     retry_count = state.get("retry_count", 0)
-    trace = list(state.get("agent_trace", []))
 
     # On retry, expand the query to pull broader context
     if retry_count > 0:
@@ -119,17 +118,15 @@ def reranker_node(state: AgentState) -> dict:
     else:
         reranked = []
 
-    trace.append({
-        "node": "reranker",
-        "namespaces_queried": namespaces,
-        "retrieved_count": len(top_matches),
-        "reranked_count": len(reranked),
-        "query_used": query_for_retrieval,
-        "retry_count": retry_count,
-    })
-
     return {
         "retrieved_chunks": top_matches,
         "reranked_chunks": reranked,
-        "agent_trace": trace,
+        "agent_trace": [{
+            "node": "reranker",
+            "namespaces_queried": namespaces,
+            "retrieved_count": len(top_matches),
+            "reranked_count": len(reranked),
+            "query_used": query_for_retrieval,
+            "retry_count": retry_count,
+        }],
     }

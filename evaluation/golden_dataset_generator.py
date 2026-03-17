@@ -163,7 +163,7 @@ def generate_golden_dataset(
         for item in dataset:
             f.write(json.dumps(item) + "\n")
 
-    print(f"\nGolden dataset: {len(dataset)} Q&A pairs → {output_file}")
+    print(f"\nGolden dataset: {len(dataset)} Q&A pairs -> {output_file}")
     return dataset
 
 

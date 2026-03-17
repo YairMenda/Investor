@@ -52,7 +52,6 @@ def finance_agent_node(state: AgentState) -> dict:
 
     reranked = state.get("reranked_chunks", [])
     query = state["user_query"]
-    trace = list(state.get("agent_trace", []))
 
     # Filter chunks to finance category (prefer finance, but use all if none match)
     finance_chunks = [c for c in reranked if c.get("metadata", {}).get("category") == CATEGORY]
@@ -77,13 +76,11 @@ def finance_agent_node(state: AgentState) -> dict:
 
     output = response.content[0].text.strip()
 
-    trace.append({
-        "node": "finance_agent",
-        "chunks_used": len(context_chunks),
-        "output_preview": output[:200] + "..." if len(output) > 200 else output,
-    })
-
     return {
         "finance_output": output,
-        "agent_trace": trace,
+        "agent_trace": [{
+            "node": "finance_agent",
+            "chunks_used": len(context_chunks),
+            "output_preview": output[:200] + "..." if len(output) > 200 else output,
+        }],
     }

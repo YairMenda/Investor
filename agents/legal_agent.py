@@ -48,7 +48,6 @@ def legal_agent_node(state: AgentState) -> dict:
 
     reranked = state.get("reranked_chunks", [])
     query = state["user_query"]
-    trace = list(state.get("agent_trace", []))
 
     legal_chunks = [c for c in reranked if c.get("metadata", {}).get("category") == CATEGORY]
     context_chunks = legal_chunks if legal_chunks else reranked
@@ -70,13 +69,11 @@ def legal_agent_node(state: AgentState) -> dict:
 
     output = response.content[0].text.strip()
 
-    trace.append({
-        "node": "legal_agent",
-        "chunks_used": len(context_chunks),
-        "output_preview": output[:200] + "..." if len(output) > 200 else output,
-    })
-
     return {
         "legal_output": output,
-        "agent_trace": trace,
+        "agent_trace": [{
+            "node": "legal_agent",
+            "chunks_used": len(context_chunks),
+            "output_preview": output[:200] + "..." if len(output) > 200 else output,
+        }],
     }

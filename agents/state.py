@@ -4,6 +4,7 @@ LangGraph AgentState definition.
 All nodes in the graph read from and write to this shared state TypedDict.
 """
 
+import operator
 from typing import Annotated, Any, TypedDict
 
 from langgraph.graph.message import add_messages
@@ -39,7 +40,9 @@ class AgentState(TypedDict):
 
     # ── Final output ──────────────────────────────────────────────────────
     final_response: str | None
-    agent_trace: list[dict]         # step records for UI expander
+
+    # operator.add merges lists from concurrent parallel nodes (fan-out safe)
+    agent_trace: Annotated[list[dict], operator.add]
 
 
 def initial_state(user_query: str, user_profile: dict | None = None) -> AgentState:

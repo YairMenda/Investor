@@ -48,7 +48,6 @@ def persona_agent_node(state: AgentState) -> dict:
 
     reranked = state.get("reranked_chunks", [])
     query = state["user_query"]
-    trace = list(state.get("agent_trace", []))
 
     persona_chunks = [c for c in reranked if c.get("metadata", {}).get("category") == CATEGORY]
     context_chunks = persona_chunks if persona_chunks else reranked
@@ -70,13 +69,11 @@ def persona_agent_node(state: AgentState) -> dict:
 
     output = response.content[0].text.strip()
 
-    trace.append({
-        "node": "persona_agent",
-        "chunks_used": len(context_chunks),
-        "output_preview": output[:200] + "..." if len(output) > 200 else output,
-    })
-
     return {
         "persona_output": output,
-        "agent_trace": trace,
+        "agent_trace": [{
+            "node": "persona_agent",
+            "chunks_used": len(context_chunks),
+            "output_preview": output[:200] + "..." if len(output) > 200 else output,
+        }],
     }

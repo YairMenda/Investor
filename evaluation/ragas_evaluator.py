@@ -135,7 +135,7 @@ def evaluate_pipeline(
     output_file.parent.mkdir(exist_ok=True)
     with open(output_file, "w") as f:
         json.dump(scores, f, indent=2)
-    print(f"\nResults saved → {output_file}")
+    print(f"\nResults saved -> {output_file}")
 
     return scores
 

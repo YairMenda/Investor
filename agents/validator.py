@@ -101,7 +101,6 @@ def validator_node(state: AgentState) -> dict:
     """
     LangGraph node: validate outputs and assemble or trigger retry.
     """
-    trace = list(state.get("agent_trace", []))
     retry_count = state.get("retry_count", 0)
     reranked = state.get("reranked_chunks", [])
 
@@ -114,7 +113,7 @@ def validator_node(state: AgentState) -> dict:
             "validation_passed": True,
             "validation_issues": [],
             "final_response": state.get("final_response", "No analysis available."),
-            "agent_trace": trace,
+            "agent_trace": [{"node": "validator", "validation_passed": True, "skipped": True}],
         }
 
     # Ask Claude to validate
@@ -137,20 +136,20 @@ def validator_node(state: AgentState) -> dict:
     passed = result.get("validation_passed", True)
     issues = result.get("unsupported_claims", [])
 
-    trace.append({
+    trace_entry = {
         "node": "validator",
         "validation_passed": passed,
         "unsupported_claims": issues,
         "retry_count": retry_count,
         "explanation": result.get("explanation", ""),
-    })
+    }
 
     if not passed and retry_count < MAX_RETRIES:
         return {
             "validation_passed": False,
             "validation_issues": issues,
             "retry_count": retry_count + 1,
-            "agent_trace": trace,
+            "agent_trace": [trace_entry],
         }
 
     # Passed or max retries reached — assemble final response
@@ -159,7 +158,7 @@ def validator_node(state: AgentState) -> dict:
         "validation_passed": True,
         "validation_issues": issues,
         "final_response": final,
-        "agent_trace": trace,
+        "agent_trace": [trace_entry],
     }
 
 

@@ -88,6 +88,35 @@ def _add_overlap(chunks: list[str], overlap_pct: float = 0.10) -> list[str]:
     return result
 
 
+def _split_large_chunk(text: str, max_words: int = 1200, overlap_words: int = 50) -> list[str]:
+    """
+    Split a large text into smaller pieces at paragraph boundaries.
+    Falls back to word-count splitting if no paragraphs are found.
+    """
+    # Try to split on double newlines (paragraphs)
+    paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+
+    if not paragraphs:
+        paragraphs = [text]
+
+    chunks: list[str] = []
+    current_words: list[str] = []
+
+    for para in paragraphs:
+        para_words = para.split()
+        if len(current_words) + len(para_words) > max_words and current_words:
+            chunks.append(" ".join(current_words))
+            # Keep overlap
+            current_words = current_words[-overlap_words:] + para_words
+        else:
+            current_words.extend(para_words)
+
+    if current_words:
+        chunks.append(" ".join(current_words))
+
+    return chunks if chunks else [text]
+
+
 def chunk_section(
     doc: SectionDocument,
     splitter=None,
@@ -110,7 +139,16 @@ def chunk_section(
         return []
 
     # SemanticChunker splits on semantic boundaries
-    raw_chunks = splitter.split_text(doc.text)
+    raw_chunks_initial = splitter.split_text(doc.text)
+
+    # Secondary split: break any chunk > 1500 words using a simple paragraph splitter
+    # (avoids importing langchain_text_splitters which has numpy/pandas compat issues)
+    raw_chunks = []
+    for rc in raw_chunks_initial:
+        if len(rc.split()) > 1500:
+            raw_chunks.extend(_split_large_chunk(rc, max_words=1200, overlap_words=50))
+        else:
+            raw_chunks.append(rc)
 
     # Post-process: add overlap between consecutive chunks
     overlapped = _add_overlap(raw_chunks, settings.chunk_overlap_pct)
@@ -188,7 +226,7 @@ def _save_chunks(ticker: str, chunks: list[Chunk]) -> Path:
     with open(out_path, "w", encoding="utf-8") as f:
         for chunk in chunks:
             f.write(json.dumps(chunk.to_dict()) + "\n")
-    print(f"  Saved {len(chunks)} chunks → {out_path}")
+    print(f"  Saved {len(chunks)} chunks to {out_path}")
     return out_path
 
 
